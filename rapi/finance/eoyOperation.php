@@ -129,9 +129,9 @@ function process_EOY() {
 
 
         $stmt4 = $conn->prepare("SELECT trdCcy, trdBranch, sum(case when trdDrCr='Dr' then trdAmount else -trdAmount end) as total
-            from trnDetails where trdReference = '1000PLCL26026000010'
+            from trnDetails where trdReference = ?
             group by trdCcy, trdBranch");
-        $stmt4->execute();
+        $stmt4->execute([$trnRef]);
         $totalPL = $stmt4->fetchAll(PDO::FETCH_ASSOC);
         foreach($totalPL as $tPL){
             $totalBalance = $tPL['total'];
