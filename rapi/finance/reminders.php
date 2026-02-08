@@ -36,44 +36,28 @@ switch ($request_method) {
 
 function get_reminders() {
     global $conn, $value;
+    $params=[];
     try {
-        if (isset($_GET['rmdID']) && !empty($_GET['rmdID'])) {
-            // Use SQL for single record
-            $sql = "SELECT rm.*, br.brcName, concat(pr.perName, ' ', pr.perLastName) as fullName, pr.perPhone, pr.perEmail
-                from reminders rm
-                join branch br on br.brcID = rm.rmdBranch
-                join accounts ac on ac.accNumber = rm.rmdAccount
-                left join accountDetails ad on ad.actAccount = ac.accNumber
-                left join personal pr on pr.perID = ad.actSignatory 
-                WHERE rmdID = :id order by rmdID ASC";
-            $stmt = $conn->prepare($sql);
-            $stmt->bindParam(':id', $_GET['rmdID'], PDO::PARAM_INT);
+        $sql = "SELECT rm.*, ad.actCurrency as currency, br.brcName, concat(pr.perName, ' ', pr.perLastName) as fullName, pr.perPhone, pr.perEmail
+            from reminders rm
+            join branch br on br.brcID = rm.rmdBranch
+            left join accounts ac on ac.accNumber = rm.rmdAccount
+            left join accountDetails ad on ad.actAccount = ac.accNumber
+            left join personal pr on pr.perID = ad.actSignatory";
+
+        if (isset($_GET['rmdID']) && !empty($_GET['rmdID'])) {        
+            $sql .= " WHERE rmdID = :id order by rmdID ASC";
+            $params[':id'] = $_GET['rmdID'];
         
-        } elseif(isset($_GET['alerts']) && !empty($_GET['alerts'])){
+        }elseif(isset($_GET['alerts']) && !empty($_GET['alerts'])){
 
             date_default_timezone_set($value->getCompanyAttributes('comTimeZone'));
             $currentDate = date("Y-m-d");
-            // Use SQL for single record
-            $sql = "SELECT rm.*, br.brcName, concat(pr.perName, ' ', pr.perLastName) as fullName, pr.perPhone, pr.perEmail
-                from reminders rm
-                join branch br on br.brcID = rm.rmdBranch
-                join accounts ac on ac.accNumber = rm.rmdAccount
-                left join accountDetails ad on ad.actAccount = ac.accNumber
-                left join personal pr on pr.perID = ad.actSignatory 
-                WHERE rmdAlertDate <= :cDate and rmdStatus = 0 order by rmdID ASC";
-            $stmt = $conn->prepare($sql);
-            $stmt->bindParam(':cDate', $currentDate);
-        } else {
-            // Use default SQL for all records
-            $sql = "SELECT rm.*, br.brcName, concat(pr.perName, ' ', pr.perLastName) as fullName, pr.perPhone, pr.perEmail
-                from reminders rm
-                join branch br on br.brcID = rm.rmdBranch
-                join accounts ac on ac.accNumber = rm.rmdAccount
-                left join accountDetails ad on ad.actAccount = ac.accNumber
-                left join personal pr on pr.perID = ad.actSignatory";
-            $stmt = $conn->prepare($sql);
+            $sql .= " WHERE rmdAlertDate <= :cDate and rmdStatus = 0 order by rmdID ASC";
+            $params[':cDate'] = $currentDate;
         }
-        $stmt->execute();
+        $stmt = $conn->prepare($sql);
+        $stmt->execute($params);
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
         echo json_encode($data, JSON_PRETTY_PRINT);
     } 
@@ -86,12 +70,13 @@ function get_reminders() {
         ]);
     }
 }
+
 function add_reminders() {
     global $conn, $value;
     $data = json_decode(file_get_contents("php://input"), true);
 
     $user = $data['user'];
-    $name = $data['rmdMame'];
+    $name = $data['rmdName'];
     $account = $data['rmdAccount'];
     $amount = $data['rmdAmount'];
     $details = $data['rmdDetails'];
@@ -136,7 +121,7 @@ function update_reminders(){
 
     $user = $data['user'];
     $id = $data['rmdID'];
-    $name = $data['rmdMame'];
+    $name = $data['rmdName'];
     $account = $data['rmdAccount'];
     $amount = $data['rmdAmount'];
     $details = $data['rmdDetails'];

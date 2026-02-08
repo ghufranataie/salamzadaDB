@@ -238,7 +238,7 @@ function create_order(){
         );
 
         $conn->commit();
-        echo json_encode(["msg" => "success"], JSON_PRETTY_PRINT);
+        echo json_encode(["msg" => "success", "ref" => $trnRef, "ordID" => $ordID], JSON_PRETTY_PRINT);
     } catch (\Throwable $th) {
         $conn->rollBack();
         echo json_encode([
@@ -408,7 +408,7 @@ function update_order(){
         );
 
         $conn->commit();
-        echo json_encode(["msg" => "success"], JSON_PRETTY_PRINT);
+        echo json_encode(["msg" => "success", "ref" => $trnRef, "ordID" => $ordID], JSON_PRETTY_PRINT);
     } catch (\Throwable $th) {
         $conn->rollBack();
         echo json_encode([
