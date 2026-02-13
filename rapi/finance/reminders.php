@@ -55,6 +55,8 @@ function get_reminders() {
             $currentDate = date("Y-m-d");
             $sql .= " WHERE rmdAlertDate <= :cDate and rmdStatus = 0 order by rmdID ASC";
             $params[':cDate'] = $currentDate;
+        }else{
+            $sql .= " WHERE rmdStatus = 0 or (rmdStatus = 1 AND rmdAlertDate BETWEEN DATE_SUB(CURDATE(), INTERVAL 7 DAY) AND DATE_ADD(CURDATE(), INTERVAL 1 MONTH))";
         }
         $stmt = $conn->prepare($sql);
         $stmt->execute($params);

@@ -99,7 +99,7 @@ function cash_Transaction(){
                 $done2 = $stmt1->execute([$trnRef, $accCcy, $branch, $account, "Cr", $amount, $remark, $entryDateTime]);
                 break;
 
-            case 'CHWL': // withdraw
+            case 'CHWL': // withdraw 
                 if ($acclimit != 1) {
                     echo json_encode(["msg" => "over limit"], JSON_PRETTY_PRINT);
                     exit;

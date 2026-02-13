@@ -82,18 +82,13 @@ function add_fundTransfer(){
         $conn->beginTransaction();
 
         // Insert into transactions
-        $stmt = $conn->prepare("
-            INSERT INTO transactions (trnReference, trnType, trnStatus, trnStateText, trnMaker, trnEntryDate)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ");
+        $stmt = $conn->prepare(" INSERT INTO transactions (trnReference, trnType, trnStatus, trnStateText, trnMaker, trnEntryDate) VALUES (?, ?, ?, ?, ?, ?)");
         $stmt->execute([$trnRef, $type, $status, $stateText, $usrID, $entryDateTime]);
 
         // Prepare transaction details insert
-        $stmt1 = $conn->prepare("
-            INSERT INTO trnDetails 
+        $stmt1 = $conn->prepare("INSERT INTO trnDetails 
             (trdReference, trdCcy, trdBranch, trdAccount, trdDrCr, trdAmount, trdNarration, trdEntryDate)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ");
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
 
         foreach($data['records'] as $rec){
             $acc = $rec['account'];

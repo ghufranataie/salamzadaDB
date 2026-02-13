@@ -178,6 +178,11 @@ function delete_transaction() {
             $stmt->execute([$ref]);
             $stmt1 = $conn->prepare("UPDATE transactions set trnStateText='Deleted', trnStatus = 1, trnAuthorizer=? where trnReference =?");
             $stmt1->execute([$checkerID, $ref]);
+
+            if($trnType == "SLRY"){
+                $stmtPrlDelete = $conn->prepare("DELETE from payroll where prlTrnRef = ?");
+                $stmtPrlDelete->execute([$ref]);
+            }
             echo json_encode(["msg" => "deleted"], JSON_PRETTY_PRINT);
         }else{
             echo json_encode(["msg" => "invalid"], JSON_PRETTY_PRINT);
