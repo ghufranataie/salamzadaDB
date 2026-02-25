@@ -32,10 +32,10 @@ try {
         // Update user to verified
         $stmt1 = $conn->prepare("UPDATE users SET usrToken = 'verified' where usrName = ?");
         $stmt1->execute([$user]);
-
+        echo "The token is: $token\n";
         echo "Your email has been verified! You can now login.";
-
     } else {
+        echo "The token is: $token\n";
         echo "Invalid or expired token.";
     }
 } catch (\Throwable $th) {

@@ -217,7 +217,14 @@ function delete_shifting(){
     $user = $data['usrName'];
     $ordID = $data['ordID'];
 
+
+    $userResult = $value->getUserDetails($user);
+    $branch = $userResult['usrBranch'];
+    $usrID = $userResult['usrID'];
+
     try {
+
+        $stmtCheck = $conn->prepare("SELECT trnMaker from transactions where trnReference = ?");
 
         $conn->beginTransaction();
 
@@ -239,6 +246,15 @@ function delete_shifting(){
 
         $ordTrnRef = $result['ordTrnRef'];
         $oName = $result['ordName'];
+
+        $stmtCheck->execute([$ordTrnRef]);
+        $usrResult = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+        $creatorUser = $usrResult['trnMaker'];
+        
+        if($creatorUser != $usrID){
+            echo json_encode(["msg" => "not allowed"], JSON_PRETTY_PRINT);
+            exit();
+        }
 
         if(!empty($ordTrnRef)){
             $stmt1->execute([$ordTrnRef]);

@@ -45,7 +45,7 @@ function get_shippings() {
     try {
         $sql = "SELECT ROW_NUMBER() OVER (ORDER BY sh.shpID DESC) as No, sh.shpID, vc.vclModel as vehicle,
                 concat(pe.perName, ' ', pe.perLastName) as driverName, pd.proName, concat(pc.perName, ' ', pc.perLastName) as customerName, sh.shpFrom,
-                sh.shpMovingDate, sh.shpLoadSize, sh.shpUnit, sh.shpArriveDate, sh.shpUnloadSize, sh.shpRent, (sh.shpUnloadSize * sh.shpRent) as total, sh.shpStatus    
+                sh.shpMovingDate, sh.shpLoadSize, sh.shpUnit, sh.shpTo, sh.shpArriveDate, sh.shpUnloadSize, sh.shpRent, (sh.shpUnloadSize * sh.shpRent) as total, sh.shpStatus    
             from shipping sh
             left join vehicles vc on vc.vclID = sh.shpVehicle
             left join employees em on em.empID = vc.vclDriver

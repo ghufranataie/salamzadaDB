@@ -133,16 +133,31 @@ function login(){
             $stmt2->execute([$username, $username]);
             $data2 = $stmt2->fetchAll(PDO::FETCH_ASSOC);
 
-            $data1["permissions"] = $data2;
+            $stmt3 = $conn->prepare("SELECT comID, comName, comLicenseNo, comSlogan, comDetails, comPHone, comEmail, comWebsite, comOwner, comFB, 
+                comInsta, comWhatsapp, comVerify, comLocalCcy, comTimeZone,
+                concat(a.addName, ', ', a.addCity, ', ', a.addProvince, ', ', a.addCountry) as comAddress 
+                from companyProfile c
+                join branch b on b.brcCompany = c.comID
+                join users u on u.usrBranch = b.brcID
+                join address a on a.addID = c.comAddress
+                where u.usrName = ? or u.usrEmail = ?");
+            $stmt3->execute([$username, $username]);
+            $data3 = $stmt3->fetch(PDO::FETCH_ASSOC);
 
-            // 4️⃣ Output
-            echo json_encode($data1, JSON_PRETTY_PRINT);
+            $data1["permissions"] = $data2;
+            $data1["company"] = $data3;
+
 
             $value->generateUserActivityLog(
                 $username, 
                 'User Login',
                 "Success: User Successfully logged in with correct credentials"
             );
+
+            // var_dump($data1);
+
+            // 4️⃣ Output
+            echo json_encode($data1, JSON_PRETTY_PRINT);
             
         }else{
             echo json_encode(["msg" => "incorrect"]);

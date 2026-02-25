@@ -43,23 +43,22 @@ switch ($request_method) {
 function get_personal() {
     global $conn;
     try {
+        $sql = "SELECT * FROM personal join address on address.addID = personal.perAddress";
 
         if (isset($_GET['perID']) && !empty($_GET['perID'])) {
-
-            // Use SQL for single record
-            $sql = "SELECT * FROM personal join address on address.addID = personal.perAddress WHERE perID = :id";
+            $sql .= " WHERE perID = :id";
             $stmt = $conn->prepare($sql);
             $stmt->bindParam(':id', $_GET['perID'], PDO::PARAM_INT);
-        
+        } elseif(isset($_GET['search']) && !empty($_GET['search'])){
+            $sql .= " WHERE perName LIKE :search OR perLastName LIKE :search OR perENIDNo LIKE :search OR perPhone LIKE :search OR perEmail LIKE :search";
+            $searchTerm = '%' . $_GET['search'] . '%';
+            $stmt = $conn->prepare($sql);
+            $stmt->bindParam(':search', $searchTerm, PDO::PARAM_STR);
         } else {
-
-            // Use default SQL for all records
-            $sql = "SELECT * FROM personal join address on address.addID = personal.perAddress order by perID desc";
             $stmt = $conn->prepare($sql);
         }
         
         $stmt->execute();
-
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         echo json_encode($data, JSON_PRETTY_PRINT);
@@ -94,18 +93,18 @@ function add_personal() {
     try {
         $conn -> beginTransaction();
 
-        $stmt1 = $conn->prepare("insert into address (addName, addCity, addProvince, addCountry, addZipCode, addMailing) values (?, ?, ?, ?, ?, ?)");
+        $stmt1 = $conn->prepare("INSERT into address (addName, addCity, addProvince, addCountry, addZipCode, addMailing) values (?, ?, ?, ?, ?, ?)");
         $stmt1->execute([$addName, $city, $province, $country, $zipCode, $isMailing]);
         $addID = $conn->lastInsertId();
 
-        $stmt2 = $conn->prepare("insert into personal (perName, perLastName, perGender, perDoB, perENIDNo, perAddress, perPhone, perEmail) values (?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt2 = $conn->prepare("INSERT into personal (perName, perLastName, perGender, perDoB, perENIDNo, perAddress, perPhone, perEmail) values (?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt2->execute([$firstName, $lastName, $gender, $dob, $tazNo, $addID, $cellNo, $email]);
         $personalID = $conn->lastInsertId();
 
-        $stmt3 = $conn->prepare("insert into accounts (accNumber, accName, accCategory) values (?, ?, ?)");
+        $stmt3 = $conn->prepare("INSERT into accounts (accNumber, accName, accCategory) values (?, ?, ?)");
         $stmt3->execute([$newAcc, "$firstName $lastName", $accCategory]);
 
-        $stmt4 = $conn->prepare("insert into accountDetails (actAccount, actCurrency, actCreditlimit, actSignatory, actCompany) values (?, ?, ?, ?, ?)");
+        $stmt4 = $conn->prepare("INSERT into accountDetails (actAccount, actCurrency, actCreditlimit, actSignatory, actCompany) values (?, ?, ?, ?, ?)");
         $stmt4->execute([$newAcc, $localCcy, $creditLimit, $personalID, $com]);
 
         

@@ -10,9 +10,11 @@ header("Access-Control-Allow-Methods: POST");
 header("Access-Control-Allow-Headers: Content-Type");
 
 require_once "../db.php";
+require_once "../functions.php";
 
 $db = new Database();
 $conn = $db->getConnection();
+$value = new DataValues($conn);
 $data = json_decode(file_get_contents("php://input"), true);
 $request_method = $_SERVER["REQUEST_METHOD"];
 
@@ -57,24 +59,32 @@ function get_permissions() {
 }
 
 function update_permissions(){
-    global $conn;
+    global $conn, $value;
 
     $data = json_decode(file_get_contents("php://input"), true);
 
-    $roleID = $data['uprRole'];
+    $user = $data['LogedInUser'];
     $userID = $data['uprUserID'];
-    $status = $data['uprStatus'];
+    $records = $data['records'];
 
     try {
         $conn->beginTransaction();
 
-        $stmt = $conn->prepare(
-            "UPDATE userPermissions SET uprStatus=? WHERE uprRole=? and uprUserID=?"
+        $stmt = $conn->prepare("UPDATE userPermissions SET uprStatus=? WHERE uprRole=? and uprUserID=?");
+        foreach($records['records'] as $rec){
+            $roleStatus = $rec['uprStatus'];
+            $roleID = $rec['uprRole'];
+            $stmt->execute([$roleStatus, $roleID, $userID]);
+        }
+
+        $value->generateUserActivityLog(
+            $user, 
+            'User Permission',
+            "Modify Permissions from UserID: $userID"
         );
-        $stmt->execute([$status, $roleID, $userID]);
 
         $conn->commit();
-        echo json_encode(["msg" => "success", "update role" => $roleID]);
+        echo json_encode(["msg" => "success"]);
 
     } catch (\Throwable $th) {
         $conn->rollBack();

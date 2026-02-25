@@ -62,7 +62,10 @@ function load_orders() {
                 left join transactions t on t.trnReference = o.ordTrnRef
                 join trnDetails td on td.trdReference = t.trnReference
                 join branch b on b.brcID = o.ordBranch
-                WHERE o.ordName = 'Sale' or o.ordName = 'Purchase'
+                WHERE o.ordName IN ('Sale', 'Purchase') 
+                AND (t.trnStateText = 'Pending'
+					OR (t.trnStateText = 'Authorized' AND DATE(o.ordEntryDate) BETWEEN DATE_SUB(CURDATE(), INTERVAL 30 DAY)	AND DATE_ADD(CURDATE(), INTERVAL 1 MONTH) )
+				)
                 group by ordID, ordName, perID, personal, ordxRef, ordTrnRef, ordBranch, brcName, trnStateText, ordEntryDate 
                 order by ordID DESC";
             $stmt = $conn->prepare($sql);

@@ -41,15 +41,16 @@ function generate_accountStatement() {
 
     try {
         $sql = "SELECT tp.trntName, 
-                sum(case when td.trdDrCr='Cr' then td.trdAmount else td.trdAmount end)/2 as total,
-                count(*) as total_trn
+                sum(case when td.trdDrCr='Cr' then (td.trdAmount*getRate(td.trdCcy, :lCcy)) else (td.trdAmount*getRate(td.trdCcy, :lCcy)) end)/2 as total,
+                count(*)/2 as total_trn
             FROM trnDetails td
             join transactions tr on tr.trnReference = td.trdReference
             join trnTypes tp on tp.trntCode = tr.trnType
-            where date(td.trdEntryDate) BETWEEN :fDate AND :tDate 
+            where CAST(td.trdEntryDate AS DATE) >= :fDate AND CAST(td.trdEntryDate AS DATE) <= :tDate 
             group by tp.trntName";
         
         $params = [
+            ':lCcy'  => $localCcy,
             ':fDate' => $fromDate,
             ':tDate' => $toDate
         ];

@@ -47,6 +47,15 @@ function view_availableProducts() {
             $stmt->bindParam(':av', $avail, PDO::PARAM_INT);
             $stmt->execute();
             $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }elseif(isset($_GET['proName']) && !empty($_GET['proName'])){
+            $name = $_GET['proName'];
+            $searchTerm = "%$name%";
+          
+            $sql = "SELECT * from vw_availableProducts WHERE proName like :pName";
+            $stmt = $conn->prepare($sql);
+            $stmt->bindParam(':pName', $searchTerm);
+            $stmt->execute();
+            $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }else{
             $sql = "SELECT * from vw_availableProducts";
             $stmt = $conn->prepare($sql);

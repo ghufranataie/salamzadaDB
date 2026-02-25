@@ -112,7 +112,6 @@ function create_order(){
     $totalProAmount = 0;
     $av = 0;
 
-
     $user = $data['usrName'];
     $oName = $data['ordName'];
     $perID = $data['ordPersonal'];
@@ -145,6 +144,8 @@ function create_order(){
             exit;
         }
     }
+
+    
 
     try {
         $conn->beginTransaction();
@@ -216,6 +217,19 @@ function create_order(){
                 }
         // If It is sale Transaction
         }else{
+            if(!empty($account) && $account < 600000){
+                $accStatus = $value->getAccountDetails($account, 'actStatus');
+                $acclimit = $value->checkForAccountLimit($account, $amount);
+
+                if ($acclimit != 1) {
+                    echo json_encode(["msg" => "over limit"], JSON_PRETTY_PRINT);
+                    exit;
+                }elseif($accStatus != 1){
+                    echo json_encode(["msg" => "blocked"], JSON_PRETTY_PRINT);
+                    exit;
+                }
+            }
+            
             $stmt4->execute([$trnRef, $defaultCcy, $branch, 10101011, "Cr", $totalProAmount, $remark, $entryDateTime]); //Product
             $stmt4->execute([$trnRef, $defaultCcy, $branch, $plAccount, ($totalBill > $totalProAmount ? "Cr" : "Dr"), abs($totalBill-$totalProAmount), $remark, $entryDateTime]); //Income
             if($amount < $totalBill && $amount != 0){
@@ -238,7 +252,7 @@ function create_order(){
         );
 
         $conn->commit();
-        echo json_encode(["msg" => "success"], JSON_PRETTY_PRINT);
+        echo json_encode(["msg" => "success", "ref" => $trnRef, "ordID" => $ordID], JSON_PRETTY_PRINT);
     } catch (\Throwable $th) {
         $conn->rollBack();
         echo json_encode([
@@ -408,7 +422,7 @@ function update_order(){
         );
 
         $conn->commit();
-        echo json_encode(["msg" => "success"], JSON_PRETTY_PRINT);
+        echo json_encode(["msg" => "success", "ref" => $trnRef, "ordID" => $ordID], JSON_PRETTY_PRINT);
     } catch (\Throwable $th) {
         $conn->rollBack();
         echo json_encode([

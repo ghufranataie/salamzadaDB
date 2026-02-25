@@ -165,7 +165,9 @@ function update_employee() {
     //     echo json_encode(["msg" => "empty"]);
     //     exit;
     // }
-
+    if($status == 1){
+        $endDate = "0000-00-00";
+    }
 
     try {
         $conn->beginTransaction();

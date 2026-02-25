@@ -16,7 +16,5 @@ $conn = $db->getConnection();
 
 $value = new DataValues($conn);
 
-
-
-$acc = $value->checkForAccountLimit($_GET['ac'], $_GET['bal']);
+echo "The Rate is: " . $value->getCcyRate('AFN', 'USD');
 ?>

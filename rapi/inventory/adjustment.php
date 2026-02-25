@@ -108,22 +108,21 @@ function create_order(){
     date_default_timezone_set($value->getCompanyAttributes('comTimeZone'));
 
     $account = 0;
-    $amount = 0;
     $totalProAmount = 0;
     $av = 0;
     $perID = NULL;
     $oName = "Adjustment";
     $eType = "OUT";
-    $adjAccount = "40404050";
     $proAccount = "10101011";
 
 
     $user = $data['usrName'];
     $xRef = $data['ordxRef'];
-    $amount = $data['amount'];
+    $adjAccount = !empty($data['account']) ? $data['account'] : "40404050";
     $records = $data['records'];
+    
 
-    $type = "XPNS";
+    $type = "XPNS"; 
     $status = 0;
     $stateText = "Pending";
     $authUser = NULL;
@@ -155,7 +154,7 @@ function create_order(){
             $qty = $record['stkQuantity'];
             $pPrice = $record['stkPurPrice'];
             $totalProAmount += ($qty*$pPrice);
-            if($oName == 'Sale'){
+            if($oName == 'Adjustment'){
                 $stmt2s->execute([$proID, $stgID]);
                 $rec = $stmt2s->fetch(PDO::FETCH_ASSOC);
                 $av = $rec['available'];
@@ -173,16 +172,11 @@ function create_order(){
             $status = 1;
             $stateText = "Authorized";
         }
-        if($amount > $totalProAmount){
-            $conn->rollBack();
-            echo json_encode(["msg" => "large"], JSON_PRETTY_PRINT);
-            exit;
-        }
         // Insert Into Transactions
         $stmt3->execute([$trnRef, $type, $status, $stateText, $usrID, $authUser, $entryDateTime]);
 
         // Prepare transaction details insert
-        $remark = "$oName for Adjustment to Expense Order ID: $ordID, Total Bill: $totalProAmount";
+        $remark = "$oName to balance the product shortage posted to Expense Order ID: $ordID, Total Bill: $totalProAmount";
         
 
         // If It is sale Transaction
