@@ -133,8 +133,9 @@ function update_project(){
     $account = $data['prjOwnerAccount'];
     $details = $data['prjDetails'];
     $dateline = $data['prjDateLine'];
+    $status = $data['prjStatus'];
     $entryDateTime = date("Y-m-d H:i:s");
-    $status = 0;
+    
 
     try {
         $conn->beginTransaction();
