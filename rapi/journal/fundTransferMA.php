@@ -41,12 +41,14 @@ function add_fundTransfer(){
     $status = 0;
     $stateText = "Pending";
     $entryDateTime = date("Y-m-d H:i:s");
+
     $userResult = $value->getUserDetails($user);
     $branch = $userResult['usrBranch'];
     $usrID = $userResult['usrID'];
     
     $trnRef = $value->generateTrnRef($branch, $type);
     $currencies = [];
+    $totalAmount = 0;
 
     // Check for Account Limit, Account Status and if there is same currency
     foreach($data['records'] as $record){
@@ -54,6 +56,7 @@ function add_fundTransfer(){
         $account = $record['account'];
         
         $currencies[$record['ccy']] = true;
+        $totalAmount += $debit;
 
         if($debit > 0){
             $limit = $value->checkForAccountLimit($account, $debit);
@@ -76,14 +79,25 @@ function add_fundTransfer(){
         }
     }
 
+    
+    $limit = $value->getBranchAuthLimit($branch, key($currencies));
+    if($totalAmount <= $limit){
+        $authUser = $usrID;
+        $stateText = "Authorized";
+        $status = 1;
+    }else{
+        $authUser = NULL;
+        $stateText = "Pending";
+        $status = 0;
+    }
 
     try {
 
         $conn->beginTransaction();
 
         // Insert into transactions
-        $stmt = $conn->prepare(" INSERT INTO transactions (trnReference, trnType, trnStatus, trnStateText, trnMaker, trnEntryDate) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$trnRef, $type, $status, $stateText, $usrID, $entryDateTime]);
+        $stmt = $conn->prepare(" INSERT INTO transactions (trnReference, trnType, trnStatus, trnStateText, trnMaker, trnAuthorizer, trnEntryDate) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$trnRef, $type, $status, $stateText, $usrID, $authUser, $entryDateTime]);
 
         // Prepare transaction details insert
         $stmt1 = $conn->prepare("INSERT INTO trnDetails 

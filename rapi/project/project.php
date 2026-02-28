@@ -135,28 +135,27 @@ function update_project(){
     $dateline = $data['prjDateLine'];
     $status = $data['prjStatus'];
     $entryDateTime = date("Y-m-d H:i:s");
-    
-
     try {
         $conn->beginTransaction();
 
-        $stmt = $conn->prepare("UPDATE projects SET prjName = ?, prjLocation = ?, prjOwner = ?, prjOwnerAccount = ?, prjDetails = ?, prjDateLine = ?, prjEntryDate = ?, prjStatus = ? WHERE prjID = ?");
-        $stmt->execute([$name, $location, $customer, $account, $details, $dateline, $entryDateTime, $status, $prjID]);
+        $stmt = $conn->prepare("UPDATE projects SET prjName = ?, prjLocation = ?, prjOwner = ?, prjOwnerAccount = ?, prjDetails = ?, prjDateLine = ?, prjEntryDate = ? WHERE prjID = ?");
+        $stmt->execute([$name, $location, $customer, $account, $details, $dateline, $entryDateTime, $prjID]);
 
         if($status == 1){
             $stmt1 = $conn->prepare("SELECT p.prjID, trdCcy,
-                    sum(case when pp.prpType = 'Income' and td.trdDrCr = 'Cr' then td.trdAmount else 0 end) as paid,
+                    sum(case when pp.prpType = 'Payment' and td.trdDrCr = 'Cr' then td.trdAmount else 0 end) as paid,
                     sum(case when pp.prpType = 'Entry' and td.trdDrCr = 'Dr' then td.trdAmount else 0 end) as actual
                 FROM projectPayments pp
                 JOIN transactions t on t.trnReference = pp.prpTrnRef
                 JOIN trnDetails td on td.trdReference = t.trnReference
                 JOIN projects p on p.prjID = pp.prpProjectID
-                WHERE pp.prpType != 'Expense' and p.prjID = ?
+                WHERE pp.prpType NOT IN ('Expense', 'Income') and p.prjID = ?
                 GROUP BY p.prjID, trdCcy");
             $stmt1->execute([$prjID]);
             $paymentData = $stmt1->fetch(PDO::FETCH_ASSOC);
             $paid = $paymentData['paid'] ?? 0;
             $actual = $paymentData['actual'] ?? 0;
+            $ccy = $paymentData['trdCcy'];
             if($paid == $actual){
                 $type = "PRJT";
                 $payableGL = 20202027;
@@ -175,7 +174,6 @@ function update_project(){
                     $stateText = "Pending";
                     $trnStatus = 0;
                 }
-
                 $remark = "Income from project: $name (PrjID: $prjID), Customer: $customer, Account: $account, Dateline: $dateline";
                 $stmt2 = $conn->prepare("INSERT INTO transactions (trnReference, trnType, trnStatus, trnStateText, trnMaker, trnAuthorizer, trnEntryDate) VALUES (?, ?, ?, ?, ?, ?, ?)");
                 $stmt2->execute([$trnRef, $type, $trnStatus, $stateText, $usrID, $authUser, $entryDateTime]);
@@ -185,9 +183,37 @@ function update_project(){
                 $payID = $conn->lastInsertId();
 
                 $stmt4 = $conn->prepare("INSERT INTO trnDetails (trdReference, trdCcy, trdBranch, trdAccount, trdDrCr, trdAmount, trdNarration, trdEntryDate) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-                $stmt4->execute([$trnRef, $ccy, $branch, $payableGL, "Dr", $amount, $remark, $entryDateTime]);
-                $stmt4->execute([$trnRef, $ccy, $branch, $incomeGL, "Cr", $amount, $remark, $entryDateTime]);
+                $stmt4->execute([$trnRef, $ccy, $branch, $payableGL, "Dr", $actual, $remark, $entryDateTime]);
+                $stmt4->execute([$trnRef, $ccy, $branch, $incomeGL, "Cr", $actual, $remark, $entryDateTime]);
 
+                $stmt6 = $conn->prepare("UPDATE projects SET prjStatus = 1 WHERE prjID = ?");
+                $stmt6->execute([$prjID]);
+
+            }else{
+                echo json_encode(["msg" => "payment mismatch"], JSON_PRETTY_PRINT);
+                $conn->rollBack();
+                exit;
+            }
+        }else{
+            $userResult = $value->getUserDetails($user);
+            $usrID = $userResult['usrID'];
+            $stmt5 = $conn->prepare("SELECT prpTrnRef FROM projectPayments WHERE prpProjectID = ? AND prpType = 'Income'");
+            $stmt5->execute([$prjID]);
+            $incomePayments = $stmt5->fetch(PDO::FETCH_ASSOC);
+            $ppTrnRef = $incomePayments['prpTrnRef'] ?? null;
+
+            if($incomePayments){
+                $stmt6 = $conn->prepare("UPDATE projects SET prjStatus = 0 WHERE prjID = ?");
+                $stmt6->execute([$prjID]);
+
+                $stmt7 = $conn->prepare("DELETE FROM projectPayments WHERE prpProjectID = ? AND prpType = 'Income'");
+                $stmt7->execute([$prjID]);
+
+                $stmt8 = $conn->prepare("DELETE FROM trnDetails WHERE trdReference = ?");
+                $stmt8->execute([$ppTrnRef]);
+
+                $stmt9 = $conn->prepare("UPDATE transactions SET trnStatus = 1, trnStateText = 'Deleted', trnAuthorizer = ? WHERE trnReference = ?");
+                $stmt9->execute([$usrID, $ppTrnRef]);
             }
         }
 

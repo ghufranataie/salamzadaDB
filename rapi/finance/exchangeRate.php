@@ -68,7 +68,7 @@ function get_exchangeRate() {
                         FROM ccyRate
                     ) AS t
                     join currency c on c.ccyCode = t.crTo
-                    WHERE rn = 1";
+                    WHERE rn = 1 AND crFrom != crTo ";
             $stmt = $conn->prepare($sql);
         }
         $stmt->execute();

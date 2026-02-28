@@ -45,7 +45,7 @@ function generate_accountStatement() {
             $stmt = $conn->prepare("SELECT ualID, usrID, usrName, concat(perName, ' ', perLastName) as fullName, usrRole, usrBranch, ualType, ualDetails, ualIP, ualDevice, ualTiming from userActivityLog ul
             join users on users.usrID = ul.ualUser
             join personal pr on pr.perID = users.usrOwner
-            where ualUser = ? and DATE(ualTiming) BETWEEN ? AND ?
+            where users.usrRole != 'Super' AND ualUser = ? and DATE(ualTiming) BETWEEN ? AND ?
             order by ualID desc");
             $stmt->execute([$usrID, $from, $to]);
             $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -54,7 +54,7 @@ function generate_accountStatement() {
             $stmt = $conn->prepare("SELECT ualID, usrID, usrName, concat(perName, ' ', perLastName) as fullName, usrRole, usrBranch, ualType, ualDetails, ualIP, ualDevice, ualTiming from userActivityLog ul
             join users on users.usrID = ul.ualUser
             join personal pr on pr.perID = users.usrOwner
-            where DATE(ualTiming) BETWEEN ? AND ?
+            where users.usrRole != 'Super' AND DATE(ualTiming) BETWEEN ? AND ?
             order by ualID desc");
             $stmt->execute([$from, $to]);
             $data = $stmt->fetchAll(PDO::FETCH_ASSOC);

@@ -178,75 +178,34 @@ function update_projectPayments(){
     $data = json_decode(file_get_contents("php://input"), true);
 
     $user = $data['usrName'];
-    $pID = $data['prjID'];
-    $payType = $data['prpType'];
-    $account = $data['account'];
+    $ppTrnRef = $data['prpTrnRef'];
     $amount = $data['Amount'];
     $ccy = $data['currency'];
-    $remark = $data['ppRemark'];
-    
     $entryDateTime = date("Y-m-d H:i:s");
+
+    $userResult = $value->getUserDetails($user);
+    $branch = $userResult['usrBranch'];
+    $usrID = $userResult['usrID'];
+    $limit = $value->getBranchAuthLimit($branch, $ccy);
+
+
+    if($amount <= $limit){
+        $authUser = $usrID;
+        $stateText = "Authorized";
+        $trnStatus = 1;
+    }else{
+        $authUser = NULL;
+        $stateText = "Pending";
+        $trnStatus = 0;
+    }
 
     try {
         $conn->beginTransaction();
-        $stmt0 = $conn->prepare("SELECT * from projectDetails pd
-            JOIN projectPayments pp on pp.prpID = pd.pjdPaymentID
-            WHERE pjdID = ?");
-        $stmt0->execute([$pdID]);
-        $project = $stmt0->fetch(PDO::FETCH_ASSOC);
-        if(!$project){
-            echo json_encode(["msg" => "not found"], JSON_PRETTY_PRINT);
-            exit;
-        }
-        $oldPrice = $project['pjdPricePerQty'];
-        $trnRef = $project['prpTrnRef'];
-        $qty = $project['pjdQuantity'];
-        if($oldPrice != $price){
+        $stmt1 = $conn->prepare("UPDATE trnDetails SET trdAmount = ? WHERE trdReference = ?");
+        $stmt1->execute([$amount, $ppTrnRef]);
 
-            $userResult = $value->getUserDetails($user);
-            $branch = $userResult['usrBranch'];
-            $usrID = $userResult['usrID'];
-
-            $stmt1 = $conn->prepare("SELECT prjOwnerAccount from projects WHERE prjID = :id");
-            $stmt1->bindParam(':id', $pID, PDO::PARAM_INT);
-            $stmt1->execute();
-            $project = $stmt1->fetch(PDO::FETCH_ASSOC);
-            $account = $project['prjOwnerAccount'];
-
-            if($account < 600000){
-                $accStatus = $value->getAccountDetails($account, 'actStatus');
-                $accCcy = $value->getAccountDetails($account, 'actCurrency');
-                $acclimit = $value->checkForAccountLimit($account, $price);
-            }
-            if ($acclimit != 1) {
-                echo json_encode(["msg" => "over limit"], JSON_PRETTY_PRINT);
-                $conn->rollBack();
-                exit;
-            }elseif($accStatus != 1){
-                echo json_encode(["msg" => "blocked"], JSON_PRETTY_PRINT);
-                $conn->rollBack();
-                exit;
-            }
-
-            $limit = $value->getBranchAuthLimit($branch, $accCcy);
-            if($price <= $limit){
-                $authUser = $usrID;
-                $stateText = "Authorized";
-                $trnStatus = 1;
-            }else{
-                $authUser = NULL;
-                $stateText = "Pending";
-                $trnStatus = 0;
-            }
-            $stmt2 = $conn->prepare("UPDATE trnDetails SET trdAmount = ? WHERE trdReference = ?");
-            $stmt2->execute([$price*$qty, $trnRef]);
-
-            $stmt3 = $conn->prepare("UPDATE transactions SET trnStatus = ?, trnStateText = ?, trnAuthorizer = ?, trnEntryDate = ? WHERE trnReference = ?");
-            $stmt3->execute([$trnStatus, $stateText, $authUser, $entryDateTime, $trnRef]);
-        }
-
-        $stmt = $conn->prepare("UPDATE projectDetails SET pjdQuantity = ?, pjdPricePerQty = ?, pjdRemark = ? WHERE pjdID = ?");
-        $stmt->execute([$qty, $price, $narration, $pdID]);
+        $stmt2 = $conn->prepare("UPDATE transactions SET trnStatus = ?, trnStateText = ?, trnAuthorizer = ?, trnEntryDate = ? WHERE trnReference = ?");
+        $stmt2->execute([$trnStatus, $stateText, $authUser, $entryDateTime, $ppTrnRef]);
 
         $conn->commit();
         echo json_encode(["msg" => "success"]);
@@ -273,38 +232,28 @@ function delete_projectPayments(){
     $data = json_decode(file_get_contents("php://input"), true);
 
     $user = $data['usrName'];
-    $pdID = $data['pjdID'];
+    $ppTrnRef = $data['prpTrnRef'];
+
+
+    $userResult = $value->getUserDetails($user);
+    $branch = $userResult['usrBranch'];
+    $usrID = $userResult['usrID'];
 
     try {
         $conn->beginTransaction();
-        $stmt = $conn->prepare("SELECT * from projectDetails pd
-            JOIN projectPayments pp on pp.prpID = pd.pjdPaymentID
-            WHERE pjdID = ?");
-        $stmt->execute([$pdID]);
-        $project = $stmt->fetch(PDO::FETCH_ASSOC);
-        if(!$project){
-            echo json_encode(["msg" => "not found"], JSON_PRETTY_PRINT);
-            $conn->rollBack();
-            exit;
-        }else{
-            $trnRef = $project['prpTrnRef'];
+        $stmt1 = $conn->prepare("DELETE FROM trnDetails WHERE trdReference = ?");
+        $stmt1->execute([$ppTrnRef]);
 
-            $stmt1 = $conn->prepare("DELETE FROM projectDetails WHERE pjdID = ?");
-            $stmt1->execute([$project['pjdID']]);
+        $stmt2 = $conn->prepare("UPDATE transactions SET trnStatus = 1, trnStateText = 'Deleted' WHERE trnReference = ?");
+        $stmt2->execute([$ppTrnRef]);
 
-            $stmt2 = $conn->prepare("DELETE FROM projectPayments WHERE prpID = ?");
-            $stmt3->execute([$project['prpID']]);
-
-            $stmt3 = $conn->prepare("DELETE FROM trnDetails WHERE trdReference = ?");
-            $stmt3->execute([$project['prpTrnRef']]);
-
-            $stmt4 = $conn->prepare("UPDATE transactions SET trnStatus = 1, trnStateText = 'Deleted' WHERE trnReference = ?");
-            $stmt4->execute([$project['prpTrnRef']]);
-        }
+        $stmt3 = $conn->prepare("DELETE FROM projectPayments WHERE prpTrnRef = ?");
+        $stmt3->execute([$ppTrnRef]);
+        
         $value->generateUserActivityLog(
             $user, 
             "Project",
-            "Deleted - projectDetailID: $pdID with Transaction Reference: $trnRef"
+            "Deleted - Project Payment Reference: $ppTrnRef"
         );
         $conn->commit();
         echo json_encode(["msg" => "success"]);

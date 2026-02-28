@@ -38,7 +38,7 @@ function unauth_transaction() {
     try {
         $conn->beginTransaction();
 
-        $stmt = $conn->prepare("select * from transactions where trnReference = ?");
+        $stmt = $conn->prepare("SELECT * from transactions where trnReference = ?");
         $stmt->execute([$ref]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         if($row){
@@ -53,7 +53,7 @@ function unauth_transaction() {
         }
 
         if($makerID == $checkerID){
-            $stmt1 = $conn->prepare("update transactions set trnStatus=?, trnStateText=?, trnAuthorizer =? where trnReference =?");
+            $stmt1 = $conn->prepare("UPDATE transactions set trnStatus=?, trnStateText=?, trnAuthorizer =? where trnReference =?");
             $stmt1->execute([$status, $statusText, $checkerID, $ref]);
             echo json_encode(["msg" => "pending"], JSON_PRETTY_PRINT);
         }else{
