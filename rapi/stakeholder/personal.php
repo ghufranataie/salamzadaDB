@@ -106,7 +106,6 @@ function add_personal() {
 
         $stmt4 = $conn->prepare("INSERT into accountDetails (actAccount, actCurrency, actCreditlimit, actSignatory, actCompany) values (?, ?, ?, ?, ?)");
         $stmt4->execute([$newAcc, $localCcy, $creditLimit, $personalID, $com]);
-
         
         $conn->commit();
 

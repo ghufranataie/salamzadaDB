@@ -37,6 +37,7 @@ function get_projectServices() {
     $to = $input['toDate'];
     $service = $input['services'];
     $project = $input['project'];
+    $ccy = $input['currency'];
 
     try {
         $sql = "SELECT
@@ -45,10 +46,14 @@ function get_projectServices() {
                 Date(prjEntryDate) as EntryDate,
                 pd.pjdQuantity,
                 pd.pjdPricePerQty,
-                sum(pd.pjdPricePerQty * pd.pjdQuantity) as totalAmount
+                sum(pd.pjdPricePerQty * pd.pjdQuantity) as totalAmount,
+                case when td.trdDrCr = 'Cr' then td.trdCcy else td.trdCcy end as currency
             from projectDetails pd
             join projectServices ps on ps.srvID = pd.pjdServices
             join projects p on p.prjID = pd.pjdProject
+            join projectPayments pp on pp.prpID = pd.pjdPaymentID
+            join transactions t on t.trnReference = pp.prpTrnRef
+            join trnDetails td on td.trdReference = t.trnReference
             WHERE DATE(p.prjEntryDate) BETWEEN :fDate AND :tDate";
 
         $params = [
@@ -64,6 +69,10 @@ function get_projectServices() {
         if (!empty($project)) {
             $sql .= " AND p.prjID = :proj";
             $params[':proj'] = $project;
+        }
+        if (!empty($ccy)) {
+            $sql .= " AND td.trdCcy = :ccy";
+            $params[':ccy'] = $ccy;
         }
 
         $sql .= " GROUP BY ps.srvID, p.prjID";

@@ -61,7 +61,7 @@ function load_projectPayments() {
             $stmt1 = $conn->prepare($sql1);
             $stmt1->bindParam(':id', $prjID, PDO::PARAM_INT);
             $stmt1->execute();
-            $data = $stmt1->fetch(PDO::FETCH_ASSOC);
+            $data = $stmt1->fetch(PDO::FETCH_ASSOC) ?: [];
             $sql2 .= " WHERE pp.prpType != 'Entry' AND p.prjID = :id GROUP BY pp.prpType, pp.prpTrnRef";
             $stmt2 = $conn->prepare($sql2);
             $stmt2->bindParam(':id', $prjID, PDO::PARAM_INT);

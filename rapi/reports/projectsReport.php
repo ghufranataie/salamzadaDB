@@ -37,6 +37,7 @@ function get_projects() {
     $to = $input['toDate'];
     $customer = $input['customer'];
     $status = $input['status'];
+    $ccy = $input['currency'];
 
     try {
         $sql = "SELECT p.prjID, p.prjName, p.prjLocation,
@@ -77,6 +78,11 @@ function get_projects() {
         if (isset($status) && $status !== '') {
             $sql .= " AND p.prjStatus = :statu";
             $params[':statu'] = $status;
+        }
+
+        if (!empty($ccy)) {
+            $sql .= " AND ad.actCurrency = :ccy";
+            $params[':ccy'] = $ccy;
         }
 
 
