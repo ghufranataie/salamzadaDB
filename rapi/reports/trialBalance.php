@@ -20,7 +20,7 @@ $request_method = $_SERVER["REQUEST_METHOD"];
 
 switch ($request_method) {
     case 'POST':
-        generate_accountStatement();
+        generate_trialBalance();
         break;
     default:
         http_response_code(405);
@@ -28,65 +28,121 @@ switch ($request_method) {
         break;
 }
 
-function generate_accountStatement() {
+function generate_trialBalance() {
     global $conn, $value;
 
     $data = json_decode(file_get_contents("php://input"), true);
     $date = $data['date'];
-    // $ccy = $data['ccy'];
+    $branch = $data['branch'];
     
     $localCcy = $value->getCompanyAttributes("comLocalCcy");
     
 
     try {
-        $stmt = $conn->prepare("SELECT '29999999' AS account_number, 'Stakeholders' AS account_name, :lccy AS currency, 'Liability' AS category,
-                SUM(CASE WHEN tr.trnStatus = 1 THEN 
-						CASE WHEN td.trdDrCr = 'Cr' THEN td.trdAmount * getRate(td.trdCcy, :lccy) ELSE -td.trdAmount * getRate(td.trdCcy, :lccy) END
-				ELSE 0 END) AS actual_balance,
-                
-                CASE WHEN SUM(case WHEN tr.trnStatus = 1 THEN CASE WHEN td.trdDrCr = 'Cr' THEN td.trdAmount * getRate(td.trdCcy, :lccy) ELSE -td.trdAmount * getRate(td.trdCcy, :lccy) END ELSE 0 END) < 0
-                    THEN ABS(SUM(case WHEN tr.trnStatus = 1 THEN CASE WHEN td.trdDrCr = 'Cr' THEN td.trdAmount * getRate(td.trdCcy, :lccy) ELSE -td.trdAmount * getRate(td.trdCcy, :lccy) END ELSE 0 END )) 
-				ELSE 0 END AS debit,
+        if($branch == "" || $branch == null || empty($branch)) {
+            $branch = "All";
+            $stmt = $conn->prepare("SELECT '29999999' AS account_number, 'Stakeholders' AS account_name, :lccy AS currency, 'Liability' AS category, :branch AS branch,
+                    SUM(CASE WHEN tr.trnStatus = 1 THEN 
+                            CASE WHEN td.trdDrCr = 'Cr' THEN td.trdAmount * getRate(td.trdCcy, :lccy) ELSE -td.trdAmount * getRate(td.trdCcy, :lccy) END
+                    ELSE 0 END) AS actual_balance,
                     
-                CASE WHEN SUM(CASE WHEN tr.trnStatus = 1 THEN CASE WHEN td.trdDrCr = 'Cr' THEN td.trdAmount * getRate(td.trdCcy, :lccy) ELSE -td.trdAmount * getRate(td.trdCcy, :lccy) END ELSE 0 END) > 0
-                    THEN ABS(SUM(case WHEN tr.trnStatus = 1 THEN CASE WHEN td.trdDrCr = 'Cr' THEN td.trdAmount * getRate(td.trdCcy, :lccy) ELSE -td.trdAmount * getRate(td.trdCcy, :lccy) END ELSE 0 END ))
-				ELSE 0 END AS credit
-            FROM trnDetails td
-            LEFT JOIN accounts ac ON ac.accNumber = td.trdAccount
-            LEFT JOIN currency c ON c.ccyCode = td.trdCcy
-            JOIN accountCategory ag ON ag.acgID = ac.accCategory
-            join transactions tr on tr.trnReference = td.trdReference
-            WHERE ac.accCategory = 8 AND date(td.trdEntryDate) <= :dt
-            GROUP BY '29999999'
-            UNION ALL
-            SELECT ac.accNumber AS account_number, ac.accName AS account_name, :lccy AS currency,
-                CASE WHEN ag.acgCategory = 1 THEN 'Asset'
-                    WHEN ag.acgCategory = 2 THEN 'Liability'
-                    WHEN ag.acgCategory = 3 THEN 'Income'
-                    WHEN ag.acgCategory = 4 THEN 'Expense'
-                    ELSE 'Stakeholder'
-                END AS category,
-                SUM(CASE WHEN tr.trnStatus = 1 THEN 
-						CASE WHEN td.trdDrCr = 'Cr' THEN td.trdAmount * getRate(td.trdCcy, :lccy) ELSE -td.trdAmount * getRate(td.trdCcy, :lccy) END
-				ELSE 0 END) AS actual_balance,
-                
-                CASE WHEN SUM(case WHEN tr.trnStatus = 1 THEN CASE WHEN td.trdDrCr = 'Cr' THEN td.trdAmount * getRate(td.trdCcy, :lccy) ELSE -td.trdAmount * getRate(td.trdCcy, :lccy) END ELSE 0 END) < 0
-                    THEN ABS(SUM(case WHEN tr.trnStatus = 1 THEN CASE WHEN td.trdDrCr = 'Cr' THEN td.trdAmount * getRate(td.trdCcy, :lccy) ELSE -td.trdAmount * getRate(td.trdCcy, :lccy) END ELSE 0 END )) 
-				ELSE 0 END AS debit,
+                    CASE WHEN SUM(case WHEN tr.trnStatus = 1 THEN CASE WHEN td.trdDrCr = 'Cr' THEN td.trdAmount * getRate(td.trdCcy, :lccy) ELSE -td.trdAmount * getRate(td.trdCcy, :lccy) END ELSE 0 END) < 0
+                        THEN ABS(SUM(case WHEN tr.trnStatus = 1 THEN CASE WHEN td.trdDrCr = 'Cr' THEN td.trdAmount * getRate(td.trdCcy, :lccy) ELSE -td.trdAmount * getRate(td.trdCcy, :lccy) END ELSE 0 END )) 
+                    ELSE 0 END AS debit,
+                        
+                    CASE WHEN SUM(CASE WHEN tr.trnStatus = 1 THEN CASE WHEN td.trdDrCr = 'Cr' THEN td.trdAmount * getRate(td.trdCcy, :lccy) ELSE -td.trdAmount * getRate(td.trdCcy, :lccy) END ELSE 0 END) > 0
+                        THEN ABS(SUM(case WHEN tr.trnStatus = 1 THEN CASE WHEN td.trdDrCr = 'Cr' THEN td.trdAmount * getRate(td.trdCcy, :lccy) ELSE -td.trdAmount * getRate(td.trdCcy, :lccy) END ELSE 0 END ))
+                    ELSE 0 END AS credit
+                FROM trnDetails td
+                LEFT JOIN accounts ac ON ac.accNumber = td.trdAccount
+                LEFT JOIN currency c ON c.ccyCode = td.trdCcy
+                JOIN accountCategory ag ON ag.acgID = ac.accCategory
+                join transactions tr on tr.trnReference = td.trdReference
+                WHERE ac.accCategory = 8 AND date(td.trdEntryDate) <= :dt
+                GROUP BY '29999999'
+                having actual_balance != 0
+                UNION ALL
+                SELECT ac.accNumber AS account_number, ac.accName AS account_name, :lccy AS currency,
+                    CASE WHEN ag.acgCategory = 1 THEN 'Asset'
+                        WHEN ag.acgCategory = 2 THEN 'Liability'
+                        WHEN ag.acgCategory = 3 THEN 'Income'
+                        WHEN ag.acgCategory = 4 THEN 'Expense'
+                        ELSE 'Stakeholder'
+                    END AS category, :branch as branch,
+                    SUM(CASE WHEN tr.trnStatus = 1 THEN 
+                            CASE WHEN td.trdDrCr = 'Cr' THEN td.trdAmount * getRate(td.trdCcy, :lccy) ELSE -td.trdAmount * getRate(td.trdCcy, :lccy) END
+                    ELSE 0 END) AS actual_balance,
                     
-                CASE WHEN SUM(CASE WHEN tr.trnStatus = 1 THEN CASE WHEN td.trdDrCr = 'Cr' THEN td.trdAmount * getRate(td.trdCcy, :lccy) ELSE -td.trdAmount * getRate(td.trdCcy, :lccy) END ELSE 0 END) > 0
-                    THEN ABS(SUM(case WHEN tr.trnStatus = 1 THEN CASE WHEN td.trdDrCr = 'Cr' THEN td.trdAmount * getRate(td.trdCcy, :lccy) ELSE -td.trdAmount * getRate(td.trdCcy, :lccy) END ELSE 0 END ))
-				ELSE 0 END AS credit
-            FROM trnDetails td
-            LEFT JOIN accounts ac ON ac.accNumber = td.trdAccount
-            LEFT JOIN currency c ON c.ccyCode = td.trdCcy
-            JOIN accountCategory ag ON ag.acgID = ac.accCategory
-            join transactions tr on tr.trnReference = td.trdReference
-            WHERE ac.accCategory BETWEEN 1 AND 12
-            AND ac.accCategory != 8 AND date(td.trdEntryDate) <= :dt
-            GROUP BY ac.accNumber, ac.accName, ac.accCategory;");
+                    CASE WHEN SUM(case WHEN tr.trnStatus = 1 THEN CASE WHEN td.trdDrCr = 'Cr' THEN td.trdAmount * getRate(td.trdCcy, :lccy) ELSE -td.trdAmount * getRate(td.trdCcy, :lccy) END ELSE 0 END) < 0
+                        THEN ABS(SUM(case WHEN tr.trnStatus = 1 THEN CASE WHEN td.trdDrCr = 'Cr' THEN td.trdAmount * getRate(td.trdCcy, :lccy) ELSE -td.trdAmount * getRate(td.trdCcy, :lccy) END ELSE 0 END )) 
+                    ELSE 0 END AS debit,
+                        
+                    CASE WHEN SUM(CASE WHEN tr.trnStatus = 1 THEN CASE WHEN td.trdDrCr = 'Cr' THEN td.trdAmount * getRate(td.trdCcy, :lccy) ELSE -td.trdAmount * getRate(td.trdCcy, :lccy) END ELSE 0 END) > 0
+                        THEN ABS(SUM(case WHEN tr.trnStatus = 1 THEN CASE WHEN td.trdDrCr = 'Cr' THEN td.trdAmount * getRate(td.trdCcy, :lccy) ELSE -td.trdAmount * getRate(td.trdCcy, :lccy) END ELSE 0 END ))
+                    ELSE 0 END AS credit
+                FROM trnDetails td
+                LEFT JOIN accounts ac ON ac.accNumber = td.trdAccount
+                LEFT JOIN currency c ON c.ccyCode = td.trdCcy
+                JOIN accountCategory ag ON ag.acgID = ac.accCategory
+                join transactions tr on tr.trnReference = td.trdReference
+                WHERE ac.accCategory BETWEEN 1 AND 12
+                AND ac.accCategory != 8 AND date(td.trdEntryDate) <= :dt
+                GROUP BY ac.accNumber, ac.accName, ac.accCategory
+                having actual_balance != 0;");
+        } else {
+            $stmt = $conn->prepare("SELECT '29999999' AS account_number, 'Stakeholders' AS account_name, :lccy AS currency, 'Liability' AS category, :branch AS branch,
+                    SUM(CASE WHEN tr.trnStatus = 1 THEN 
+                            CASE WHEN td.trdDrCr = 'Cr' THEN td.trdAmount * getRate(td.trdCcy, :lccy) ELSE -td.trdAmount * getRate(td.trdCcy, :lccy) END
+                    ELSE 0 END) AS actual_balance,
+                    
+                    CASE WHEN SUM(case WHEN tr.trnStatus = 1 THEN CASE WHEN td.trdDrCr = 'Cr' THEN td.trdAmount * getRate(td.trdCcy, :lccy) ELSE -td.trdAmount * getRate(td.trdCcy, :lccy) END ELSE 0 END) < 0
+                        THEN ABS(SUM(case WHEN tr.trnStatus = 1 THEN CASE WHEN td.trdDrCr = 'Cr' THEN td.trdAmount * getRate(td.trdCcy, :lccy) ELSE -td.trdAmount * getRate(td.trdCcy, :lccy) END ELSE 0 END )) 
+                    ELSE 0 END AS debit,
+                        
+                    CASE WHEN SUM(CASE WHEN tr.trnStatus = 1 THEN CASE WHEN td.trdDrCr = 'Cr' THEN td.trdAmount * getRate(td.trdCcy, :lccy) ELSE -td.trdAmount * getRate(td.trdCcy, :lccy) END ELSE 0 END) > 0
+                        THEN ABS(SUM(case WHEN tr.trnStatus = 1 THEN CASE WHEN td.trdDrCr = 'Cr' THEN td.trdAmount * getRate(td.trdCcy, :lccy) ELSE -td.trdAmount * getRate(td.trdCcy, :lccy) END ELSE 0 END ))
+                    ELSE 0 END AS credit
+                FROM trnDetails td
+                LEFT JOIN accounts ac ON ac.accNumber = td.trdAccount
+                LEFT JOIN currency c ON c.ccyCode = td.trdCcy
+                JOIN accountCategory ag ON ag.acgID = ac.accCategory
+                join transactions tr on tr.trnReference = td.trdReference
+                WHERE ac.accCategory = 8 AND date(td.trdEntryDate) <= :dt and td.trdBranch = :branch
+                GROUP BY '29999999'
+                having actual_balance != 0
+                UNION ALL
+                SELECT ac.accNumber AS account_number, ac.accName AS account_name, :lccy AS currency,
+                    CASE WHEN ag.acgCategory = 1 THEN 'Asset'
+                        WHEN ag.acgCategory = 2 THEN 'Liability'
+                        WHEN ag.acgCategory = 3 THEN 'Income'
+                        WHEN ag.acgCategory = 4 THEN 'Expense'
+                        ELSE 'Stakeholder'
+                    END AS category, td.trdBranch as branch,
+                    SUM(CASE WHEN tr.trnStatus = 1 THEN 
+                            CASE WHEN td.trdDrCr = 'Cr' THEN td.trdAmount * getRate(td.trdCcy, :lccy) ELSE -td.trdAmount * getRate(td.trdCcy, :lccy) END
+                    ELSE 0 END) AS actual_balance,
+                    
+                    CASE WHEN SUM(case WHEN tr.trnStatus = 1 THEN CASE WHEN td.trdDrCr = 'Cr' THEN td.trdAmount * getRate(td.trdCcy, :lccy) ELSE -td.trdAmount * getRate(td.trdCcy, :lccy) END ELSE 0 END) < 0
+                        THEN ABS(SUM(case WHEN tr.trnStatus = 1 THEN CASE WHEN td.trdDrCr = 'Cr' THEN td.trdAmount * getRate(td.trdCcy, :lccy) ELSE -td.trdAmount * getRate(td.trdCcy, :lccy) END ELSE 0 END )) 
+                    ELSE 0 END AS debit,
+                        
+                    CASE WHEN SUM(CASE WHEN tr.trnStatus = 1 THEN CASE WHEN td.trdDrCr = 'Cr' THEN td.trdAmount * getRate(td.trdCcy, :lccy) ELSE -td.trdAmount * getRate(td.trdCcy, :lccy) END ELSE 0 END) > 0
+                        THEN ABS(SUM(case WHEN tr.trnStatus = 1 THEN CASE WHEN td.trdDrCr = 'Cr' THEN td.trdAmount * getRate(td.trdCcy, :lccy) ELSE -td.trdAmount * getRate(td.trdCcy, :lccy) END ELSE 0 END ))
+                    ELSE 0 END AS credit
+                FROM trnDetails td
+                LEFT JOIN accounts ac ON ac.accNumber = td.trdAccount
+                LEFT JOIN currency c ON c.ccyCode = td.trdCcy
+                JOIN accountCategory ag ON ag.acgID = ac.accCategory
+                join transactions tr on tr.trnReference = td.trdReference
+                WHERE ac.accCategory BETWEEN 1 AND 12
+                AND ac.accCategory != 8 AND date(td.trdEntryDate) <= :dt and td.trdBranch = :branch
+                GROUP BY ac.accNumber, ac.accName, ac.accCategory, td.trdBranch
+                having actual_balance != 0;");
+        }
+        
         $stmt->bindParam(":lccy", $localCcy);
         $stmt->bindParam(":dt", $date);
+        $stmt->bindParam(":branch", $branch);
         $stmt->execute();
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 

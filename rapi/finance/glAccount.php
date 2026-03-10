@@ -42,14 +42,16 @@ function get_glAccounts() {
 
     try {
 
-        if (isset($_GET['acc']) && !empty($_GET['acc'])) {
+        if (isset($_GET['input']) && !empty($_GET['input'])) {
             // Use SQL for single record
             $sql = "SELECT ac.accNumber, ac.accName, ag.acgCategory as accCategory, ag.acgName
                 from accounts ac
                 join accountCategory ag on ag.acgID = ac.accCategory
-                where ac.accCategory != 8 AND accNumber = :acc";
+                where ac.accCategory != 8 AND (accNumber like :input or accName like :input)";
             $stmt = $conn->prepare($sql);
-            $stmt->bindParam(':acc', $_GET['acc'], PDO::PARAM_INT);
+            $searchTerm = '%' . $_GET['input'] . '%';
+            $stmt->bindParam(':input', $searchTerm, PDO::PARAM_STR);
+            
         
         } else {
             // Use default SQL for all records
@@ -62,35 +64,6 @@ function get_glAccounts() {
         $stmt->execute();
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
         echo json_encode($data, JSON_PRETTY_PRINT);
-
-
-
-        // if (isset($_GET['local'])) {
-        //     $local = $_GET['local'];
-
-        //     if($local == 'en'){
-        //         $sql = "SELECT * from accounts where accCategory !=5";
-        //         $stmt = $conn->prepare($sql);
-             
-        //     }elseif ($local == 'fa'){
-        //         $sql = "select accNumber, accCategory, acnName as accName from accounts
-        //                 join accountsName on accountsName.acnNumber = accounts.accNumber
-        //                 where accCategory !=5 and acnLocal = :local";
-        //         $stmt = $conn->prepare($sql);
-        //         $stmt->bindParam(':local', $_GET['local'], PDO::PARAM_STR);
-        //     }else{
-        //         $sql = "select accNumber, accCategory, acnName as accName from accounts
-        //                 join accountsName on accountsName.acnNumber = accounts.accNumber
-        //                 where accCategory !=5 and acnLocal = :local";
-        //         $stmt = $conn->prepare($sql);
-        //         $stmt->bindParam(':local', $_GET['local'], PDO::PARAM_STR);
-        //     }
-        //     $stmt->execute();
-        //     $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        //     echo json_encode($data, JSON_PRETTY_PRINT);
-        // } else {
-        //     echo json_encode(["msg" => "No local provided"]);
-        // }
     } 
     catch (PDOException $th) {
         echo json_encode([

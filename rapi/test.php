@@ -16,5 +16,7 @@ $conn = $db->getConnection();
 
 $value = new DataValues($conn);
 
-echo "The Rate is: " . $value->getCcyRate('AFN', 'USD');
+$hashValue = password_hash("SALAMZADA.PETROLIUM.COMPANY.OFFICIAL.LICENSE.KEY", PASSWORD_ARGON2ID);
+
+echo "The Subscription Hash Value is: $hashValue";
 ?>

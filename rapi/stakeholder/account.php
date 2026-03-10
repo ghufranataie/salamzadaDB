@@ -27,9 +27,6 @@ switch ($request_method) {
     case 'PUT':
         update_accounts();
         break;
-    case 'DELETE':
-        delete_accounts();
-        break;
     default:
         http_response_code(405);
         echo json_encode(array("message" => "Method Not Allowed"));
@@ -136,26 +133,6 @@ function update_accounts(){
             "trace" => $th->getTrace()
         ]);
     }
-}
-function delete_accounts(){
-    global $conn;
-    $data = json_decode(file_get_contents("php://input"), true);
-    try {
-        $conn->beginTransaction();
-        if (isset($_GET['accNo']) && !empty($_GET['accNo'])){
-            $stmt1 = $conn->prepare(
-                "delete from accounts where accNumber = ?"
-            );
-            $stmt1->execute([$accName]);
-        }else{
-
-        }
-        
-
-    } catch (\Throwable $th) {
-        //throw $th;
-    }
-
 }
 
 ?>

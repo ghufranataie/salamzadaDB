@@ -37,14 +37,14 @@ function get_permissions() {
         if (!empty($_GET['username'])) {
 
             $sql = "SELECT 
-                        userPermissions.uprRole,
-                        users.usrName,
-                        userPermissions.uprStatus,
-                        roleSubGroup.rsgName
-                    FROM userPermissions
-                    JOIN users ON users.usrID = userPermissions.uprUserID
-                    JOIN roleSubGroup ON roleSubGroup.rsgID = userPermissions.uprRole
-                    WHERE users.usrName = :username";
+                    userPermissions.uprRole,
+                    users.usrName,
+                    userPermissions.uprStatus,
+                    roleSubGroup.rsgName
+                FROM userPermissions
+                JOIN users ON users.usrID = userPermissions.uprUserID
+                JOIN roleSubGroup ON roleSubGroup.rsgID = userPermissions.uprRole
+                WHERE users.usrName = :username  order by uprRole";
 
             $stmt = $conn->prepare($sql);
             $stmt->bindParam(':username', $_GET['username'], PDO::PARAM_STR); // FIXED

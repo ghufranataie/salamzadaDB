@@ -41,7 +41,7 @@ function get_comProfile() {
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
         foreach ($data as &$row) {
             if (isset($row['comLogo'])) {
-                $row['comLogo'] = base64_encode($row['comLogo']);
+                $row['comLogo'] = base64_encode($row['comLogo']); 
             }
         }
         echo json_encode($data, JSON_PRETTY_PRINT);

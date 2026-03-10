@@ -11,6 +11,10 @@ header("Content-Type: application/json; charset=UTF-8");
 
 require_once "../db.php";
 require_once "../functions.php";
+require_once __DIR__ . '/../../vendor/autoload.php';
+
+$dotenv = Dotenv\Dotenv::createImmutable(__DIR__); // __DIR__ = /var/www/html/rapi/HR
+$dotenv->load();
 
 $db = new Database();
 $conn = $db->getConnection();
@@ -62,10 +66,14 @@ function get_login() {
 function login(){
     global $conn, $value;
 
+    $subKey = $_ENV['SUB_KEY'] ?? null;
     $data = json_decode(file_get_contents("php://input"), true);
 
     $username = $data['usrName'];
     $password = $data['usrPass'];
+
+    date_default_timezone_set($value->getCompanyAttributes('comTimeZone'));
+    $currentDate = date("Y-m-d");
     
 
     try {
@@ -78,7 +86,9 @@ function login(){
             $hashedPass = $row['usrPass'];
             $verification = $row['usrToken'];
             $verifyPass = password_verify($password, $hashedPass);
+            $role = $row['usrID'];
 
+            // Create activity log for blocked, unverified, and FCP users, as well as incorrect password attempts
             if(!$verifyPass){
                 $value->generateUserActivityLog(
                     $username, 
@@ -88,7 +98,6 @@ function login(){
                 echo json_encode(["msg" => "incorrect"]);
                 exit;
             }
-
             if($status == false){
                 $value->generateUserActivityLog(
                     $username, 
@@ -98,7 +107,6 @@ function login(){
                 echo json_encode(["msg" => "blocked"]);
                 exit;
             }
-
             if($verification != 'verified'){
                 $value->generateUserActivityLog(
                     $username, 
@@ -108,7 +116,6 @@ function login(){
                 echo json_encode(["msg" => "unverified"]);
                 exit;
             }
-
             if($fcp == 1){
                 $value->generateUserActivityLog(
                     $username, 
@@ -118,22 +125,44 @@ function login(){
                 echo json_encode(["msg" => "fcp"]);
                 exit;
             }
+            if($role != 1){
+                $stmtSub = $conn->prepare("SELECT * from subscription order by subID desc limit 1");
+                $stmtSub->execute();
+                $subResult = $stmtSub->fetch(PDO::FETCH_ASSOC);
+                if($subResult){
+                    $hashedKey = $subResult['subKey'];
+                    $expiryDate = $subResult['subExpireDate'];
+                    $verifySub = password_verify($subKey, $hashedKey);
+                    if(!$verifySub){
+                        echo json_encode(["msg" => "nosub"]);
+                        exit;
+                    }
+                    if($expiryDate <= $currentDate){
+                        echo json_encode(["msg" => "nosub"]);
+                        exit;
+                    }
+                }else{
+                    echo json_encode(["msg" => "nosub"]);
+                    exit;
+                }
+            }
 
-            $stmt1 = $conn->prepare("SELECT usrName, usrID, concat(perName, ' ', perLastName) as usrFullName, perPhoto, usrRole, usrEmail, perPhone, usrEntryDate, usrBranch, brcName from users
-                                    join branch on branch.brcID = users.usrBranch
-                                    join personal on personal.perID = users.usrOwner
-                                    Where usrName = ? or usrEmail =?");
+            $stmt1 = $conn->prepare("SELECT usrName, usrID, concat(perName, ' ', perLastName) as usrFullName, perPhoto, rolName as usrRole, usrEmail, perPhone, usrEntryDate, usrBranch, brcName from users
+                join branch on branch.brcID = users.usrBranch
+                join personal on personal.perID = users.usrOwner
+                join roles rl on rl.rolID = users.usrRole
+                Where usrName = ? or usrEmail =?");
             $stmt1->execute([$username, $username]);
             $data1 = $stmt1->fetch(PDO::FETCH_ASSOC);
 
             $stmt2 = $conn->prepare("SELECT userPermissions.uprRole, userPermissions.uprStatus, roleSubGroup.rsgName FROM userPermissions
-                                    JOIN users ON users.usrID = userPermissions.uprUserID
-                                    JOIN roleSubGroup ON roleSubGroup.rsgID = userPermissions.uprRole
-                                    WHERE users.usrName = ? or usrEmail =?");
+                JOIN users ON users.usrID = userPermissions.uprUserID
+                JOIN roleSubGroup ON roleSubGroup.rsgID = userPermissions.uprRole
+                WHERE users.usrName = ? or usrEmail =?");
             $stmt2->execute([$username, $username]);
             $data2 = $stmt2->fetchAll(PDO::FETCH_ASSOC);
 
-            $stmt3 = $conn->prepare("SELECT comID, comName, comLicenseNo, comSlogan, comDetails, comPHone, comEmail, comWebsite, comOwner, comFB, 
+            $stmt3 = $conn->prepare("SELECT comID, comName, comLicenseNo, comSlogan, comDetails, comPhone, comEmail, comWebsite, comLogo, comOwner, comFB, 
                 comInsta, comWhatsapp, comVerify, comLocalCcy, comTimeZone,
                 concat(a.addName, ', ', a.addCity, ', ', a.addProvince, ', ', a.addCountry) as comAddress 
                 from companyProfile c
@@ -143,6 +172,10 @@ function login(){
                 where u.usrName = ? or u.usrEmail = ?");
             $stmt3->execute([$username, $username]);
             $data3 = $stmt3->fetch(PDO::FETCH_ASSOC);
+
+            if ($data3 && isset($data3['comLogo'])) {
+                $data3['comLogo'] = base64_encode($data3['comLogo']);
+            }
 
             $data1["permissions"] = $data2;
             $data1["company"] = $data3;
@@ -173,7 +206,4 @@ function login(){
         ]);
     }
 }
-
-
-
 ?>

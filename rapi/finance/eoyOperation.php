@@ -51,7 +51,8 @@ function get_profitLoss() {
             join accounts ac on ac.accNumber = td.trdAccount
             join accountCategory ag on ag.acgID	= ac.accCategory
             where ag.acgCategory between 3 and 4
-            group by td.trdBranch, ac.accNumber, ac.accName, td.trdCcy, ag.acgName";
+            group by td.trdBranch, ac.accNumber, ac.accName, td.trdCcy, ag.acgName
+            having debit > 0 or credit > 0";
         $stmt = $conn->prepare($sql);
         $stmt->execute();
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);

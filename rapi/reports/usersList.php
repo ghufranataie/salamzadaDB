@@ -46,7 +46,7 @@ function get_users() {
                 u.usrBranch as branch,
                 u.usrEmail as email, 
                 p.perPhone as phone,
-                u.usrRole as role,
+                rl.rolName as role,
                 case when u.usrToken = 'verified' then 'Yes' else 'No' end as verification,
                 case when u.usrFCP = 1 then 'Yes' else 'No' end as fcp,
                 u.usrALFCounter as alf,
@@ -54,6 +54,7 @@ function get_users() {
                 date(u.usrEntryDate) as createDate
             from users u
             join personal p on p.perID = u.usrOwner
+            join roles rl on rl.rolID = u.usrRole
             Where usrID != 0";
 
         $params = [];
@@ -74,7 +75,7 @@ function get_users() {
         }
 
         if (!empty($role)) {
-            $sql .= " AND u.usrRole = :rl";
+            $sql .= " AND rl.rolID = :rl";
             $params[':rl'] = $role;
         }
         $stmt = $conn->prepare($sql);

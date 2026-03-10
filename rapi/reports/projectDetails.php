@@ -70,7 +70,7 @@ function get_projectDetails() {
                 JOIN transactions t on t.trnReference = pp.prpTrnRef
                 JOIN trnDetails td on td.trdReference = t.trnReference
                 JOIN projects p on p.prjID = pp.prpProjectID
-                WHERE p.prjID = :id
+                WHERE p.prjID = :id and pp.prpType NOT IN ('Entry', 'Income')
                 GROUP BY pp.prpTrnRef order by pp.prpType ASC";
             $stmt3 = $conn->prepare($sql3);
             $stmt3->execute($params);
