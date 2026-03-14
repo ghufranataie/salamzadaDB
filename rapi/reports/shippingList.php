@@ -52,7 +52,7 @@ function get_shippings() {
             left join personal pc on pc.perID = sh.shpCustomer
             left join personal pe on pe.perID = em.empPersonal
             left join product pd on pd.proID = sh.shpProduct
-            WHERE date(sh.shpArriveDate) between :fDate AND :tDate";
+            WHERE date(sh.shpMovingDate) between :fDate AND :tDate";
 
         $params = [
             ':fDate' => $from,

@@ -161,6 +161,7 @@ function update_shipingTransaction() {
     $user = $data['usrName'];
     $shpID = $data['shpID'];
     $trnRef = $data['trnReference'];
+    $account = $data['accNumber'];
     $amount = $data['amount'];
     $remark = $data['narration'];
 
@@ -183,7 +184,7 @@ function update_shipingTransaction() {
 
     try {
 
-        $stmt = $conn->prepare("select shpStatus from shipping where shpID = ? limit 1");
+        $stmt = $conn->prepare("SELECT shpStatus from shipping where shpID = ? limit 1");
         $stmt->execute([$shpID]);
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
         $status = $result['shpStatus'];
@@ -196,9 +197,11 @@ function update_shipingTransaction() {
 
         $stmt1 = $conn->prepare("UPDATE transactions SET trnStatus=?, trnStateText=?, trnMaker=?, trnAuthorizer=? WHERE trnReference=?");
         $stmt2 = $conn->prepare("UPDATE trnDetails SET trdAmount = ?, trdNarration=? WHERE trdReference=?");
+        $stmt3 = $conn->prepare("UPDATE trnDetails SET trdAccount = ? WHERE trdReference=? and trdDrCr = 'Dr'");
 
         $stmt1->execute([$trnStatus, $stateText, $usrID, $authID, $trnRef]);
         $stmt2->execute([$amount, $remark, $trnRef]);
+        $stmt3->execute([$account, $trnRef]);
 
         $conn->commit();
 
@@ -233,7 +236,7 @@ function delete_shipingTransaction() {
 
     try {
 
-        $stmt = $conn->prepare("select shpStatus from shipping where shpID = ? limit 1");
+        $stmt = $conn->prepare("SELECT shpStatus from shipping where shpID = ? limit 1");
         $stmt->execute([$shpID]);
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
         $status = $result['shpStatus'];
@@ -246,11 +249,11 @@ function delete_shipingTransaction() {
 
         $stmt1 = $conn->prepare("DELETE from shippingDetails where shdTrnRef=? and shdShipingID=?");
         $stmt2 = $conn->prepare("DELETE from trnDetails where trdReference = ?");
-        $stmt3 = $conn->prepare("DELETE from transactions where trnReference = ?");
+        $stmt3 = $conn->prepare("UPDATE transactions set trnStatus=1, trnStateText='Deleted', trnAuthorizer=? where trnReference = ?");
 
         $stmt1->execute([$trnRef, $shpID]);
         $stmt2->execute([$trnRef]);
-        $stmt3->execute([$trnRef]);
+        $stmt3->execute([$usrID, $trnRef]);
 
         $conn->commit();
 

@@ -38,6 +38,7 @@ function get_runningStock() {
     $product = (INT)$input['proID'];
     $storage = (INT)$input['stgID'];
     $personal = (INT)$input['perID'];
+    $inOut = $input['io'];
 
 
     $zero = 0;
@@ -86,6 +87,11 @@ function get_runningStock() {
         if (!empty($personal)) {
             $sql .= " AND vio.perID = :perID";
             $params[':perID'] = $personal;
+        }
+
+        if (!empty($inOut)) {
+            $sql .= " AND vio.entryType = :inOut";
+            $params[':inOut'] = $inOut;
         }
 
         $sql .= " ORDER BY vio.entryDate, vio.orderID";

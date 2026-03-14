@@ -45,7 +45,7 @@ function get_personal() {
     try {
         $sql = "SELECT * FROM personal join address on address.addID = personal.perAddress";
 
-        if (isset($_GET['input']) && !empty($_GET['input'])) {
+        if (isset($_GET['perID']) && !empty($_GET['perID'])) {
             $sql .= " WHERE perID = :id";
             $stmt = $conn->prepare($sql);
             $stmt->bindParam(':id', $_GET['perID'], PDO::PARAM_INT);

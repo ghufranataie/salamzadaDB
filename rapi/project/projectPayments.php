@@ -152,8 +152,8 @@ function create_projectPayments() {
         $payID = $conn->lastInsertId();
 
         $stmt3 = $conn->prepare("INSERT INTO trnDetails (trdReference, trdCcy, trdBranch, trdAccount, trdDrCr, trdAmount, trdNarration, trdEntryDate) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt3->execute([$trnRef, $ccy, $branch, $account, ($payType == "Income" ? "Cr" : "Dr"), $amount, $remark, $entryDateTime]);
-        $stmt3->execute([$trnRef, $ccy, $branch, $vaultGL, ($payType == "Income" ? "Dr" : "Cr"), $amount, $remark, $entryDateTime]);
+        $stmt3->execute([$trnRef, $ccy, $branch, $account, ($payType == "Payment" ? "Cr" : "Dr"), $amount, $remark, $entryDateTime]);
+        $stmt3->execute([$trnRef, $ccy, $branch, $vaultGL, ($payType == "Payment" ? "Dr" : "Cr"), $amount, $remark, $entryDateTime]);
 
         $conn->commit();
         echo json_encode(["msg" => "success"], JSON_PRETTY_PRINT);
